@@ -1,0 +1,54 @@
+{
+	admin off
+
+	# --- TLS: выберите один режим ---------------------------------------
+	# LAN без TLS (по умолчанию):
+	auto_https off
+	#
+	# Внутренний CA (TLS без обращения к интернету, сертификат нужно
+	# один раз импортировать в Windows):
+	# auto_https disable_certs
+	#
+	# Публичный домен с Let's Encrypt (DNS-проверка на 443/tcp):
+	# auto_https on
+}
+
+{$MUSIC_DOMAIN} {
+	log {
+		output file /var/log/caddy/music.log
+	}
+
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	handle /healthz {
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	handle /metrics {
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	handle /ws/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	handle /subsonic/* {
+		reverse_proxy 127.0.0.1:8081
+	}
+
+	handle {
+		root * /srv/music-stack/web
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+}

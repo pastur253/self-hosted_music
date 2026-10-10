@@ -1,0 +1,20 @@
+[Unit]
+Description=MusicStack Caddy (TLS, статика MixWeb, проксирование)
+Documentation=https://caddyserver.com/docs
+After=network-online.target mixcore.service mixgateway.service
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=root
+Group=root
+EnvironmentFile=/etc/music-stack/web.env
+ExecStart=/usr/local/bin/caddy run --config /etc/music-stack/Caddyfile --adapter caddyfile
+ExecReload=/usr/local/bin/caddy reload --config /etc/music-stack/Caddyfile --adapter caddyfile --force
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

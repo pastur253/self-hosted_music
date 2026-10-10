@@ -1,0 +1,8 @@
+== music-stack ==
+/srv/music-stack/web/*.log {
+    daily
+    rotate 7
+    compress
+    missingok
+    notifempty
+}

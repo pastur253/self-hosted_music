@@ -1,0 +1,32 @@
+[Unit]
+Description=MusicStack Navidrome (Subsonic API, библиотека)
+Documentation=https://www.navidrome.org/docs/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=music
+Group=music
+WorkingDirectory=/srv/music-stack
+EnvironmentFile=/etc/music-stack/navidrome.env
+ExecStart=/usr/local/bin/navidrome
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGINT
+
+StateDirectory=music-stack
+StateDirectoryMode=0750
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/var/lib/music-stack/navidrome /srv/music
+
+[Install]
+WantedBy=multi-user.target

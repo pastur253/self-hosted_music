@@ -1,0 +1,11 @@
+[Unit]
+Description=Ежедневный бэкап MusicStack
+Requires=music-backup.service
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+RandomizedDelaySec=20m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,33 @@
+[Unit]
+Description=MusicStack MixCore (миксы, синтезы, совместные плейлисты, WebSocket)
+Documentation=file:/opt/music-stack/docs/runbook.md
+After=network-online.target music-navidrome.service
+Wants=network-online.target
+Requires=music-navidrome.service
+
+[Service]
+Type=exec
+User=music
+Group=music
+WorkingDirectory=/opt/music-stack
+EnvironmentFile=/etc/music-stack/mixcore.env
+ExecStart=/opt/music-stack/venv/bin/uvicorn mixcore.asgi:app --host 127.0.0.1 --port 8080 --proxy-headers --forwarded-allow-ips=127.0.0.1
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+StateDirectory=music-stack
+StateDirectoryMode=0750
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/var/lib/music-stack/mixcore
+
+[Install]
+WantedBy=multi-user.target

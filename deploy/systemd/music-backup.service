@@ -1,0 +1,15 @@
+[Unit]
+Description=MusicStack backup (Navidrome + состояние MixCore)
+After=music-navidrome.service mixcore.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/opt/music-stack/deploy/native/scripts/backup-native.sh
+Nice=10
+IOSchedulingClass=idle
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/backups/music-stack /var/lib/music-stack

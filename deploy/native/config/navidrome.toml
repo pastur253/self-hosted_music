@@ -1,0 +1,3 @@
+DataFolder = "/var/lib/music-stack/navidrome"
+MusicFolder = "__MUSIC_DIR__"
+CacheFolder = "/var/lib/music-stack/navidrome/cache"

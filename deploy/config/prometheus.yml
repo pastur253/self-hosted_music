@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 30s
+
+scrape_configs:
+  - job_name: mixcore
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["mixcore:8080"]
+  - job_name: mixgateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["mixgateway:8080"]

@@ -1,0 +1,47 @@
+{
+	admin off
+	auto_https off
+}
+
+{$MIX_DOMAIN} {
+	encode zstd gzip
+
+	handle_path /api/* {
+		reverse_proxy mixcore:8080
+	}
+
+	handle /healthz {
+		reverse_proxy mixcore:8080
+	}
+
+	handle /metrics {
+		reverse_proxy mixcore:8080
+	}
+
+	handle /ws/* {
+		reverse_proxy mixcore:8080 {
+			header_up Connection {>Connection}
+			header_up Upgrade {>Upgrade}
+		}
+	}
+
+	handle /subsonic/* {
+		reverse_proxy mixgateway:8080
+	}
+
+	handle {
+		reverse_proxy mixweb:8080
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

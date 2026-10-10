@@ -1,0 +1,23 @@
+DataFolder = "/data"
+MusicFolder = "/music"
+CacheFolder = "/data/cache"
+ConfigFile = "/config/config.toml"
+
+[SessionTimeout]
+Duration = "72h"
+
+[Sharing]
+Enabled = false
+
+[ExternalServices]
+Enabled = false
+
+[Plugins]
+Enabled = false
+Folder = "/data/plugins"
+
+[Logging]
+Level = "info"
+
+[Scan]
+Schedule = "@every 1h"

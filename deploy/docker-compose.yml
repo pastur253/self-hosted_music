@@ -1,0 +1,155 @@
+name: self-hosted-music
+
+services:
+  caddy:
+    image: caddy:${CADDY_VERSION:-2.8-alpine}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      MIX_DOMAIN: ${PUBLIC_DOMAIN:-localhost}
+      MIX_EMAIL: ${ACME_EMAIL:-admin@localhost}
+    volumes:
+      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    networks: [edge]
+    depends_on:
+      mixcore: { condition: service_healthy }
+      mixgateway: { condition: service_healthy }
+
+  navidrome:
+    image: deluan/navidrome:${NAVIDROME_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_CACHEFOLDER: /data/cache
+      ND_CONFIGFILE: /config/config.toml
+      ND_SESSIONTIMEOUT: ${ND_SESSIONTIMEOUT:-72h}
+      ND_ENABLESHARING: "false"
+      ND_ENABLEEXTERNALSERVICES: ${ND_ENABLE_EXTERNAL_SERVICES:-false}
+      ND_PLUGINS_ENABLED: ${ND_PLUGINS_ENABLED:-false}
+      ND_LOGLEVEL: ${ND_LOGLEVEL:-info}
+      ND_BASEURL: ""
+      ND_LASTFM_APIKEY: ${ND_LASTFM_APIKEY:-}
+      ND_LASTFM_SECRET: ${ND_LASTFM_SECRET:-}
+    volumes:
+      - ${MUSIC_PATH:-../music}:/music:ro
+      - ./data/navidrome:/data
+      - ./config/navidrome/config.toml:/config/config.toml:ro
+      - ./data/navidrome/plugins:/data/plugins
+    networks: [app]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4533/rest/ping?u=hc\\&f=json >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  mixcore:
+    image: ${MIXCORE_IMAGE:-local/mixcore:dev}
+    build:
+      context: ../mixcore
+    restart: unless-stopped
+    depends_on:
+      navidrome: { condition: service_healthy }
+    environment:
+      MIX_STATE_DIR: /var/lib/mixcore
+      MIX_NAVIDROME_URL: http://navidrome:4533
+      MIX_NAVIDROME_USER: ${MIX_NAVIDROME_USER:-mix-admin}
+      MIX_NAVIDROME_SECRET_FILE: /run/secrets/navidrome_admin
+      MIX_GATEWAY_TOKEN_FILE: /run/secrets/gateway_token
+      MIX_MODE: ${MIX_MODE:-offline_first}
+      MIX_SYNTH_MODE: ${MIX_SYNTH_MODE:-algo}
+      MIX_MIX_LENGTH: ${MIX_MIX_LENGTH:-30}
+      MIX_NO_REPEAT_DAYS: ${MIX_NO_REPEAT_DAYS:-14}
+      MIX_WEATHER_PROVIDER: ${MIX_WEATHER_PROVIDER:-none}
+      MIX_WEATHER_API_KEY: ${MIX_WEATHER_API_KEY:-}
+      MIX_LLM_ENABLED: ${MIX_LLM_ENABLED:-false}
+      MIX_LLM_URL: ${MIX_LLM_URL:-http://ollama:11434}
+      MIX_LLM_MODEL: ${MIX_LLM_MODEL:-qwen2.5:7b-instruct}
+      MIX_LLM_MAX_INFLUENCE: ${MIX_LLM_MAX_INFLUENCE:-0.2}
+      MIX_AI_TIMEOUT_MS: ${MIX_AI_TIMEOUT_MS:-10000}
+      MIX_EMBEDDINGS_ENABLED: ${MIX_EMBEDDINGS_ENABLED:-false}
+      MIX_LOG_LEVEL: ${MIX_LOG_LEVEL:-INFO}
+      MIX_VERSION: ${MIX_VERSION:-0.1.0}
+    secrets: [navidrome_admin, gateway_token]
+    volumes:
+      - mix_data:/var/lib/mixcore
+    networks: [app]
+    read_only: true
+    tmpfs: ["/tmp"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+
+  mixgateway:
+    image: ${MIXGATEWAY_IMAGE:-local/mixgateway:dev}
+    build:
+      context: ../mixgateway
+    restart: unless-stopped
+    depends_on:
+      mixcore: { condition: service_healthy }
+      navidrome: { condition: service_healthy }
+    environment:
+      MIX_UPSTREAM: http://navidrome:4533
+      MIX_CORE_URL: http://mixcore:8080
+      MIX_GATEWAY_TOKEN_FILE: /run/secrets/gateway_token
+      MIX_PROXY_NATIVE_API: ${MIX_PROXY_NATIVE_API:-false}
+      MIX_LOG_LEVEL: ${MIX_LOG_LEVEL:-INFO}
+    secrets: [gateway_token]
+    networks: [app]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  mixweb:
+    image: ${MIXWEB_IMAGE:-local/mixweb:dev}
+    build:
+      context: ../mixweb
+    restart: unless-stopped
+    depends_on:
+      mixcore: { condition: service_healthy }
+    networks: [app]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  feishin:
+    image: ghcr.io/jeffvli/feishin:${FEISHIN_VERSION:-latest}
+    restart: unless-stopped
+    profiles: ["client"]
+    environment:
+      SERVER_NAME: ${FEISHIN_SERVER_NAME:-Home}
+      SERVER_TYPE: subsonic
+      SERVER_URL: ${PUBLIC_URL}/subsonic
+      SERVER_LOCK: "true"
+      LEGACY_AUTHENTICATION: "false"
+      ANALYTICS_DISABLED: "true"
+      PUBLIC_PATH: /
+    ports:
+      - "127.0.0.1:${FEISHIN_PORT:-9180}:9180"
+    networks: [edge]
+
+secrets:
+  navidrome_admin:
+    file: ./secrets/navidrome_admin
+  gateway_token:
+    file: ./secrets/gateway_token
+
+volumes:
+  mix_data:
+  caddy_data:
+
+networks:
+  edge: {}
+  app:
+    internal: true
